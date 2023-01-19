@@ -1,0 +1,17 @@
+{
+	"editor.formatOnSave": true,
+	"editor.defaultFormatter": "esbenp.prettier-vscode",
+	"editor.codeActionsOnSave": {
+		"source.organizeImports": true,
+		"source.fixAll.eslint": true,
+		"source.fixAll.stylelint": true
+	},
+	"eslint.validate": ["javascript", "typescript", "svelte"],
+	"stylelint.validate": ["css", "less", "postcss", "svelte"],
+	"[svelte]": {
+		"editor.formatOnSave": true,
+		"editor.defaultFormatter": "svelte.svelte-vscode"
+	},
+	"javascript.format.semicolons": "insert",
+	"typescript.format.semicolons": "insert"
+}

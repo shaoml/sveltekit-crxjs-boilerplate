@@ -111,3 +111,53 @@ export default config;
 ```
 
 - 构建项目 `npm run build`，并在 chrome 中调试。方法同`从本项目开始`。
+
+### 代码风格
+
+- 格式化
+
+```json
+// .vscode/settings.json
+{
+	"editor.formatOnSave": true,
+	"editor.defaultFormatter": "esbenp.prettier-vscode",
+	"editor.codeActionsOnSave": {
+		"source.organizeImports": true,
+		"source.fixAll.eslint": true,
+		"source.fixAll.stylelint": true
+	},
+	"eslint.validate": ["svelte"],
+	"stylelint.validate": ["svelte"],
+	"[svelte]": {
+		"editor.formatOnSave": true,
+		"editor.defaultFormatter": "svelte.svelte-vscode"
+	}
+}
+```
+
+```json
+// .prettierrc
+// 删除
+{
+	"plugins": ["prettier-plugin-svelte"],
+	"pluginSearchDirs": ["."],
+	"overrides": [{ "files": "*.svelte", "options": { "parser": "svelte" } }]
+}
+```
+
+```bash
+npm i -D stylelint stylelint-config-standard stylelint-config-prettier stylelint-config-recess-order
+npm i -D postcss-html stylelint-config-html
+```
+
+```json
+// .stylelintrc
+{
+	"extends": [
+		"stylelint-config-html/svelte",
+		"stylelint-config-standard",
+		"stylelint-config-prettier",
+		"stylelint-config-recess-order"
+	]
+}
+```
