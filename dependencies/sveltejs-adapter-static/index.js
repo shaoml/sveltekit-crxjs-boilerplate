@@ -1,3 +1,4 @@
+import fs from 'fs/promises';
 import path from 'path';
 import { platforms } from './platforms.js';
 
@@ -70,7 +71,8 @@ See https://kit.svelte.dev/docs/page-options#prerender for more details`
 				pages = 'build',
 				assets = pages,
 				fallback,
-				precompress
+				precompress,
+				manifest = 'vite-manifest.json'
 			} = options ?? platform?.defaults ?? /** @type {import('./index').AdapterOptions} */ ({});
 
 			builder.rimraf(assets);
@@ -99,6 +101,88 @@ See https://kit.svelte.dev/docs/page-options#prerender for more details`
 			}
 
 			if (!options) platform?.done(builder);
+
+			try {
+				await makeManifest(pages, builder, manifest);
+				builder.log.success('Make manifest.json success')
+			} catch (error) {
+				builder.log.error(error);
+				throw new Error('Make manifest.json error');
+			}
 		}
 	};
+}
+
+// 参考项目
+// https://github.com/thecrazyrussian/sveltekit-adapter-browser-extension
+
+async function makeManifest(pages, builder, manifest) {
+	const encoding = 'utf8';
+	const svelte_page = '/+page.svelte';
+	const regexp_inline_script = /<script ([^]+?)>([^]+?)<\/script>/gi;
+
+	const prefix = path.relative('.', builder.config.kit.files.routes);
+
+	// 修改 manifest.json 中的页面文件路径
+	const filepath = path.resolve('.', pages, 'manifest.json');
+	const json = JSON.parse(await fs.readFile(filepath, { encoding }));
+
+	const files = [];
+	const route = (option, name) => {
+		if (!option) return;
+		if (!option[name]) return;
+		if (typeof option[name] !== 'string') return;
+		if (!option[name].endsWith(svelte_page)) return;
+
+		option[name] = `${option[name].slice(prefix.length + 1, -svelte_page.length)}.html`;
+		files.push(option[name]);
+	};
+
+	route(json, 'devtools_page');
+	route(json, 'options_page');
+	route(json.action, 'default_popup');
+	route(json.options_ui, 'page');
+	route(json.sandbox, 'page');
+	route(json.chrome_url_overrides, 'bookmarks');
+	route(json.chrome_url_overrides, 'history');
+	route(json.chrome_url_overrides, 'newtab');
+
+	// 修改页面文件中的内联脚本
+	/** The content security policy of manifest_version 3 does not allow for inlined scripts.
+	Until kit implements a config option (#1776) to externalize scripts, the below code block should do 
+	for a quick and dirty externalization of the scripts' contents **/
+	const hash = (value) => {
+		let hash = 5381;
+		let i = value.length;
+
+		if (typeof value === 'string') {
+			while (i) hash = (hash * 33) ^ value.charCodeAt(--i);
+		} else {
+			while (i) hash = (hash * 33) ^ value[--i];
+		}
+
+		return (hash >>> 0).toString(36);
+	};
+
+	for (const file of files) {
+		const filepath = path.resolve('.', pages, file);
+		let html = await fs.readFile(filepath, { encoding });
+
+		let matches;
+		while ((matches = regexp_inline_script.exec(html)) !== null) {
+			const [script, attrs, content] = matches;
+			const filename = `script-${hash(content)}.js`;
+			const filepath = path.resolve('.', pages, filename);
+
+			await fs.writeFile(filepath, content.replace(/\t\n/g, ''), { encoding });
+
+			html = html.replace(script, `<script ${attrs} src="./${filename}"></script>`);
+		}
+		await fs.writeFile(filepath, html, { encoding });
+	}
+
+	await fs.writeFile(filepath, JSON.stringify(json, null, 2), { encoding });
+
+	// 清理 vite-manifest.json
+	await fs.rm(path.resolve('.', pages, manifest));
 }

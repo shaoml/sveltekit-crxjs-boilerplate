@@ -6,6 +6,7 @@ export interface AdapterOptions {
 	fallback?: string;
 	precompress?: boolean;
 	strict?: boolean;
+	manifest?: string;
 }
 
 export default function plugin(options?: AdapterOptions): Adapter;
