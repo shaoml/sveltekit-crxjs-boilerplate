@@ -3051,6 +3051,7 @@ const pluginResources = ({ contentScripts = {} }) => {
       return `export default import.meta.CRX_DYNAMIC_SCRIPT_${data.scriptId};`;
   }
   let port;
+  let config;
   let server;
   let { preambleCode } = contentScripts;
   let preambleRefId;
@@ -3219,7 +3220,10 @@ const pluginResources = ({ contentScripts = {} }) => {
       apply: "build",
       enforce: "post",
       config({ build, ...config }, { command }) {
-        return { ...config, build: { ...build, manifest: command === "build" } };
+        return { ...config, build: { ...build, manifest: command === "build" && (build.manifest || true) } };
+      },
+      configResolved(_config) {
+        config = _config;
       },
       renderCrxManifest(manifest, bundle) {
         manifest.web_accessible_resources = manifest.web_accessible_resources ?? [];
@@ -3235,7 +3239,7 @@ const pluginResources = ({ contentScripts = {} }) => {
               resources: ["**/*", "*"]
             });
           } else {
-            const vmAsset = bundle["manifest.json"];
+            const vmAsset = bundle[config.build?.manifest || 'manifest.json'];
             if (!vmAsset)
               throw new Error("vite manifest is missing");
             const viteManifest = JSON.parse(vmAsset.source);
